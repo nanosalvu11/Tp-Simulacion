@@ -7,7 +7,7 @@ def jugar_ruleta():
     return random.random() < (18/37)
 
 def simular(capital_inicial, n_tiradas, estrategia, tipo_capital):
-    caja = capital_inicial if tipo_capital == 'f' else float('inf')
+    caja = capital_inicial if tipo_capital == 'f' else 0  # Para infinito, registra cambio neto
     flujo_caja = [capital_inicial]
     victorias = 0
     freq_relativa = []
@@ -55,7 +55,10 @@ def simular(capital_inicial, n_tiradas, estrategia, tipo_capital):
                 apuesta = apuesta_base
 
         # Registro de datos
-        flujo_caja.append(caja if tipo_capital == 'f' else capital_inicial + (caja - float('inf')))
+        if tipo_capital == 'f':
+            flujo_caja.append(caja)
+        else:
+            flujo_caja.append(capital_inicial + caja)
         freq_relativa.append(victorias / i)
 
     return flujo_caja, freq_relativa, bancarrotas
