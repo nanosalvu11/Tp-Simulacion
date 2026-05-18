@@ -16,6 +16,7 @@ def simular(capital_inicial, n_tiradas, estrategia, tipo_capital):
     apuesta = apuesta_base
     fibo = [1, 1]
     fibo_idx = 0
+    labouchere = [1, 2, 3, 4, 5]  # Secuencia inicial para Labouchere
     bancarrotas = 0
 
     for i in range(1, n_tiradas + 1):
@@ -25,6 +26,7 @@ def simular(capital_inicial, n_tiradas, estrategia, tipo_capital):
             caja = capital_inicial # Reseteo para seguir testeando la probabilidad en n tiradas
             apuesta = apuesta_base
             fibo_idx = 0
+            labouchere = [1, 2, 3, 4, 5]
             
         gana = jugar_ruleta()
         
@@ -40,6 +42,18 @@ def simular(capital_inicial, n_tiradas, estrategia, tipo_capital):
                 apuesta = apuesta_base * fibo[fibo_idx]
             elif estrategia == 'o': 
                 apuesta *= 2 # Paroli
+            elif estrategia == 'l':
+                if len(labouchere) > 1:
+                    labouchere.pop(0)
+                    labouchere.pop()
+                    if len(labouchere) == 0:
+                        labouchere = [1, 2, 3, 4, 5]
+                        apuesta = apuesta_base * 6
+                    else:
+                        apuesta = apuesta_base * (labouchere[0] + labouchere[-1])
+                else:
+                    labouchere = [1, 2, 3, 4, 5]
+                    apuesta = apuesta_base * 6
         else:
             caja -= apuesta
             if estrategia == 'm': 
@@ -53,6 +67,14 @@ def simular(capital_inicial, n_tiradas, estrategia, tipo_capital):
                 apuesta = apuesta_base * fibo[fibo_idx]
             elif estrategia == 'o': 
                 apuesta = apuesta_base
+            elif estrategia == 'l':
+                labouchere.append(apuesta // apuesta_base)
+                if len(labouchere) > 0:
+                    apuesta = apuesta_base * (labouchere[0] + labouchere[-1])
+                else:
+                    labouchere = [1, 2, 3, 4, 5]
+                    apuesta = apuesta_base * 6
+
 
         # Registro de datos
         if tipo_capital == 'f':
@@ -68,7 +90,7 @@ if __name__ == "__main__":
     parser.add_argument('-c', type=float, required=True, help='Capital inicial')
     parser.add_argument('-n', type=int, required=True, help='Cantidad de tiradas')
     parser.add_argument('-e', type=int, default=1, help='Parámetro extra (opcional)')
-    parser.add_argument('-s', choices=['m', 'd', 'f', 'o'], required=True, help='Estrategia')
+    parser.add_argument('-s', choices=['m', 'd', 'f', 'o', 'l'], required=True, help='Estrategia')
     parser.add_argument('-a', choices=['i', 'f'], required=True, help='Tipo de capital')
     args = parser.parse_args()
 
