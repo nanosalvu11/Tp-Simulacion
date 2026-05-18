@@ -74,22 +74,24 @@ if __name__ == "__main__":
     if args.a == 'f':
         print(f"Bancarrotas sufridas: {quiebres}")
 
-    # Gráficos con Matplotlib
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-    
-    # Frecuencia Relativa
+    # Gráfico 1: Frecuencia Relativa
+    fig1 = plt.figure(figsize=(10, 6))
+    ax1 = fig1.add_subplot(111)
     ax1.bar(range(1, args.n + 1), freq, color='red', width=0.5)
     ax1.set_title('Frecuencia Relativa de Apuesta Favorable')
     ax1.set_xlabel('n (número de tiradas)')
     ax1.set_ylabel('frsa')
+    plt.tight_layout()
+    plt.show()
     
-    # Flujo de Caja
+    # Gráfico 2: Flujo de Caja
+    fig2 = plt.figure(figsize=(10, 6))
+    ax2 = fig2.add_subplot(111)
     ax2.plot(range(args.n + 1), flujo, color='red', label='fc (flujo de caja)')
     ax2.axhline(y=args.c, color='blue', linestyle='-', label='fci (flujo de caja inicial)')
     ax2.set_title('Flujo de Caja vs Tiradas')
     ax2.set_xlabel('n (número de tiradas)')
     ax2.set_ylabel('cc (cantidad de capital)')
     ax2.legend()
-
     plt.tight_layout()
     plt.show()
