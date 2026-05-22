@@ -6,13 +6,14 @@ def jugar_ruleta():
     # Simulamos apostar al color (18 números ganadores sobre 37)
     return random.random() < (18/37)
 
-def simular(capital_inicial, n_tiradas, estrategia, tipo_capital):
+def simular(capital_inicial, n_tiradas, estrategia, tipo_capital, apuesta_base):
     caja = capital_inicial if tipo_capital == 'f' else 0  # Para infinito, registra cambio neto
     flujo_caja = [capital_inicial]
     victorias = 0
     freq_relativa = []
+    historial_apuestas = [] 
     
-    apuesta_base = 10
+    # La apuesta_base ahora viene como parámetro
     apuesta = apuesta_base
     fibo = [1, 1]
     fibo_idx = 0
@@ -28,6 +29,7 @@ def simular(capital_inicial, n_tiradas, estrategia, tipo_capital):
             fibo_idx = 0
             labouchere = [1, 2, 3, 4, 5]
             
+        historial_apuestas.append(apuesta) # Guardamos el monto antes de jugar
         gana = jugar_ruleta()
         
         if gana:
@@ -75,7 +77,6 @@ def simular(capital_inicial, n_tiradas, estrategia, tipo_capital):
                     labouchere = [1, 2, 3, 4, 5]
                     apuesta = apuesta_base * 6
 
-
         # Registro de datos
         if tipo_capital == 'f':
             flujo_caja.append(caja)
@@ -83,7 +84,7 @@ def simular(capital_inicial, n_tiradas, estrategia, tipo_capital):
             flujo_caja.append(capital_inicial + caja)
         freq_relativa.append(victorias / i)
 
-    return flujo_caja, freq_relativa, bancarrotas
+    return flujo_caja, freq_relativa, bancarrotas, historial_apuestas
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -92,9 +93,11 @@ if __name__ == "__main__":
     parser.add_argument('-e', type=int, default=1, help='Parámetro extra (opcional)')
     parser.add_argument('-s', choices=['m', 'd', 'f', 'o', 'l'], required=True, help='Estrategia')
     parser.add_argument('-a', choices=['i', 'f'], required=True, help='Tipo de capital')
+    parser.add_argument('-b', type=float, default=10, help='Monto de la apuesta base/inicial') # NUEVO PARÁMETRO
     args = parser.parse_args()
 
-    flujo, freq, quiebres = simular(args.c, args.n, args.s, args.a)
+    # Le pasamos el nuevo argumento (args.b) a la función
+    flujo, freq, quiebres, apuestas = simular(args.c, args.n, args.s, args.a, args.b)
 
     if args.a == 'f':
         print(f"Bancarrotas sufridas: {quiebres}")
@@ -103,9 +106,11 @@ if __name__ == "__main__":
     fig1 = plt.figure(figsize=(10, 6))
     ax1 = fig1.add_subplot(111)
     ax1.bar(range(1, args.n + 1), freq, color='red', width=0.5)
+    ax1.axhline(y=18/37, color='black', linestyle='--', label='Prob. Teórica (18/37)')
     ax1.set_title('Frecuencia Relativa de Apuesta Favorable')
     ax1.set_xlabel('n (número de tiradas)')
     ax1.set_ylabel('frsa')
+    ax1.legend()
     plt.tight_layout()
     plt.show()
     
@@ -118,5 +123,16 @@ if __name__ == "__main__":
     ax2.set_xlabel('n (número de tiradas)')
     ax2.set_ylabel('cc (cantidad de capital)')
     ax2.legend()
+    plt.tight_layout()
+    plt.show()
+
+    # Gráfico 3: Evolución del Tamaño de la Apuesta
+    fig3 = plt.figure(figsize=(10, 6))
+    ax3 = fig3.add_subplot(111)
+    ax3.plot(range(1, args.n + 1), apuestas, color='green', alpha=0.7, label='Monto apostado')
+    ax3.set_title('Evolución del Tamaño de la Apuesta vs Tiradas')
+    ax3.set_xlabel('n (número de tiradas)')
+    ax3.set_ylabel('Unidades apostadas')
+    ax3.legend()
     plt.tight_layout()
     plt.show()
