@@ -42,8 +42,6 @@ def simular(capital_inicial, n_tiradas, estrategia, tipo_capital, apuesta_base):
             elif estrategia == 'f': 
                 fibo_idx = max(0, fibo_idx - 2)
                 apuesta = apuesta_base * fibo[fibo_idx]
-            elif estrategia == 'o': 
-                apuesta *= 2 # Paroli
             elif estrategia == 'l':
                 if len(labouchere) > 1:
                     labouchere.pop(0)
@@ -67,8 +65,6 @@ def simular(capital_inicial, n_tiradas, estrategia, tipo_capital, apuesta_base):
                 if fibo_idx >= len(fibo): 
                     fibo.append(fibo[-1] + fibo[-2])
                 apuesta = apuesta_base * fibo[fibo_idx]
-            elif estrategia == 'o': 
-                apuesta = apuesta_base
             elif estrategia == 'l':
                 labouchere.append(apuesta // apuesta_base)
                 if len(labouchere) > 0:
@@ -91,9 +87,10 @@ if __name__ == "__main__":
     parser.add_argument('-c', type=float, required=True, help='Capital inicial')
     parser.add_argument('-n', type=int, required=True, help='Cantidad de tiradas')
     parser.add_argument('-e', type=int, default=1, help='Parámetro extra (opcional)')
-    parser.add_argument('-s', choices=['m', 'd', 'f', 'o', 'l'], required=True, help='Estrategia')
+    # Eliminamos 'o' de las opciones de estrategia
+    parser.add_argument('-s', choices=['m', 'd', 'f', 'l'], required=True, help='Estrategia')
     parser.add_argument('-a', choices=['i', 'f'], required=True, help='Tipo de capital')
-    parser.add_argument('-b', type=float, default=10, help='Monto de la apuesta base/inicial') # NUEVO PARÁMETRO
+    parser.add_argument('-b', type=float, default=10, help='Monto de la apuesta base/inicial')
     args = parser.parse_args()
 
     # Le pasamos el nuevo argumento (args.b) a la función
