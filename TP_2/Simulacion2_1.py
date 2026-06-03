@@ -12,14 +12,24 @@ def gcl(semilla, a, c, m, n):
     return [((x := (a * x + c) % m) / m) for _ in range(n)]
 
 # Método de los Cuadrados Medios
-def cuadrados_medios(semilla, n):
-    x = semilla
+def cuadrados_medios(semilla, n, k=None):
+    x = int(semilla)
     res = []
+    if k is None:
+        k = len(str(abs(x)))
+    width = 2 * k
     for _ in range(n):
-        s = str(x**2).zfill(8)
-        x = int(s[2:6])  # Toma los 4 dígitos centrales
-        res.append(x / 9999) # Normaliza entre 0 y 1
+        sq = str(x * x).zfill(width)
+        start = (len(sq) - k) // 2
+        mid = sq[start:start + k]
+        x = int(mid)
+        res.append(x / (10**k - 1))
     return res
+
+# Generador ERNIE (aleatorio desde la fuente del sistema)
+def ernie_generator(n):
+    sr = random.SystemRandom()
+    return [sr.random() for _ in range(n)]
 
 # --- 2. TESTS ESTADÍSTICOS ---
 
@@ -58,21 +68,22 @@ def test_varianza(datos):
 
 # --- 3. EJECUCIÓN Y COMPARACIÓN ---
 
-N = 1000 # Cantidad de números a generar
+n = 10000 # Cantidad de números a generar
 
 # Generar secuencias
-nums_gcl = gcl(12345, 1103515245, 12345, 2**31, N)
-nums_cm = cuadrados_medios(5432, N)
-nums_py = [random.random() for _ in range(N)]
+nums_gcl = gcl(12345, 1103515245, 12345, 2**31, n)
+nums_cm = cuadrados_medios(5432, n)
+nums_py = [random.random() for _ in range(n)]
+nums_ernie = ernie_generator(n)
 
 # Armar tabla de resultados
 resultados = {
-    "Generador": ["GCL", "Cuadrados Medios", "Python (Mersenne)"],
-    "Tipo de Generador": ["Pseudoaleatorio", "Pseudoaleatorio", "Pseudoaleatorio"],
-    "Chi2 (Uniformidad)": [test_chi_cuadrado(nums_gcl), test_chi_cuadrado(nums_cm), test_chi_cuadrado(nums_py)],
-    "Rachas (Z)": [test_rachas(nums_gcl), test_rachas(nums_cm), test_rachas(nums_py)],
-    "Medias (Z)": [test_medias(nums_gcl), test_medias(nums_cm), test_medias(nums_py)],
-    "Varianza (Chi2)": [test_varianza(nums_gcl), test_varianza(nums_cm), test_varianza(nums_py)]
+    "Generador": ["GCL", "Cuadrados Medios", "Python (Mersenne)", "ERNIE"],
+    "Tipo de Generador": ["Pseudoaleatorio", "Pseudoaleatorio", "Pseudoaleatorio", "Aleatorio"],
+    "Chi2 (Uniformidad)": [test_chi_cuadrado(nums_gcl), test_chi_cuadrado(nums_cm), test_chi_cuadrado(nums_py), test_chi_cuadrado(nums_ernie)],
+    "Rachas (Z)": [test_rachas(nums_gcl), test_rachas(nums_cm), test_rachas(nums_py), test_rachas(nums_ernie)],
+    "Medias (Z)": [test_medias(nums_gcl), test_medias(nums_cm), test_medias(nums_py), test_medias(nums_ernie)],
+    "Varianza (Chi2)": [test_varianza(nums_gcl), test_varianza(nums_cm), test_varianza(nums_py), test_varianza(nums_ernie)]
 }
 
 df = pd.DataFrame(resultados)
@@ -83,7 +94,8 @@ print("-------------------------------\n")
 
 # --- 4. GRÁFICOS COMPARATIVOS ---
 
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+ax1, ax2, ax3, ax4 = axes.flatten()
 
 # Gráfico para GCL
 ax1.scatter(nums_gcl[:-1], nums_gcl[1:], s=1, color='black', alpha=0.5)
@@ -94,6 +106,16 @@ ax1.axis('off')
 ax2.scatter(nums_py[:-1], nums_py[1:], s=1, color='black', alpha=0.5)
 ax2.set_title('Python random()')
 ax2.axis('off')
+
+# Gráfico para ERNIE
+ax3.scatter(nums_ernie[:-1], nums_ernie[1:], s=1, color='black', alpha=0.5)
+ax3.set_title('Generador ERNIE')
+ax3.axis('off')
+
+# Gráfico para Cuadrados Medios
+ax4.scatter(nums_cm[:-1], nums_cm[1:], s=1, color='black', alpha=0.5)
+ax4.set_title('Cuadrados Medios')
+ax4.axis('off')
 
 plt.tight_layout()
 plt.show()
