@@ -22,6 +22,30 @@ def generar_uniforme(a, b):
         raise ValueError("Para Uniforme se requiere a < b.")
     return a + (b - a) * u()
 
+
+def generar_uniforme_rechazo(a, b, a_prop=None, b_prop=None, devolver_intentos=False):
+    """Uniforme(a,b) via rechazo usando propuesta Uniforme(a_prop,b_prop)."""
+    if a >= b:
+        raise ValueError("Para Uniforme se requiere a < b.")
+
+    if a_prop is None:
+        a_prop = a - (b - a)
+    if b_prop is None:
+        b_prop = b + (b - a)
+    if a_prop >= b_prop:
+        raise ValueError("Para propuesta Uniforme se requiere a_prop < b_prop.")
+    if a < a_prop or b > b_prop:
+        raise ValueError("Se requiere [a,b] contenido en [a_prop,b_prop].")
+
+    intentos = 0
+    while True:
+        intentos += 1
+        y = a_prop + (b_prop - a_prop) * u()
+        if a <= y <= b:
+            if devolver_intentos:
+                return y, intentos
+            return y
+
 # ==========================================
 # 2. EXPONENCIAL (Continua)
 # ==========================================
@@ -30,6 +54,29 @@ def generar_exponencial(lambd):
         raise ValueError("Para Exponencial se requiere lambda > 0.")
     # Inversa estable: X = -ln(1-U)/lambda, evitando log(0).
     return -(1.0 / lambd) * math.log(1.0 - u())
+
+
+def generar_exponencial_rechazo(lambd, lambd_prop=None, devolver_intentos=False):
+    """Exponencial(lambda) por rechazo usando propuesta Exponencial(lambda_prop)."""
+    if lambd <= 0:
+        raise ValueError("Para Exponencial se requiere lambda > 0.")
+
+    if lambd_prop is None:
+        lambd_prop = 0.5 * lambd
+    if lambd_prop <= 0 or lambd_prop > lambd:
+        raise ValueError("Se requiere 0 < lambda_prop <= lambda para acotar f/g.")
+
+    m = lambd / lambd_prop
+    intentos = 0
+    while True:
+        intentos += 1
+        y = generar_exponencial(lambd_prop)
+        # f(y)/(M g(y)) = exp(-(lambda - lambda_prop) y)
+        prob_aceptar = math.exp(-(lambd - lambd_prop) * y)
+        if u() <= prob_aceptar:
+            if devolver_intentos:
+                return y, intentos
+            return y
 
 # ==========================================
 # 3. GAMMA (Continua)
@@ -55,6 +102,31 @@ def generar_normal(mu, sigma):
     u1 = max(u1, 1e-12)
     z0 = math.sqrt(-2.0 * math.log(u1)) * math.cos(2.0 * math.pi * u2)
     return z0 * sigma + mu
+
+
+def _generar_laplace_estandar():
+    v = u()
+    if v < 0.5:
+        return math.log(2.0 * v)
+    return -math.log(2.0 * (1.0 - v))
+
+
+def generar_normal_rechazo(mu, sigma, devolver_intentos=False):
+    """Normal(mu,sigma) por rechazo con propuesta Laplace(0,1) escalada."""
+    if sigma <= 0:
+        raise ValueError("Para Normal se requiere sigma > 0.")
+
+    intentos = 0
+    while True:
+        intentos += 1
+        y = _generar_laplace_estandar()
+        # Para propuesta Laplace, criterio equivalente a f/(M g).
+        prob_aceptar = math.exp(-0.5 * (abs(y) - 1.0) ** 2)
+        if u() <= prob_aceptar:
+            x = mu + sigma * y
+            if devolver_intentos:
+                return x, intentos
+            return x
 
 # ==========================================
 # 5. PASCAL / BINOMIAL NEGATIVA (Discreta)
@@ -197,6 +269,44 @@ def _plot_discreta_con_pmf(muestras, soporte, pmf, color, titulo, xticks=None):
 if __name__ == "__main__":
     print("Generando gráficos. Cerrá cada ventana para ver la siguiente.")
     n_muestras = 10000
+
+    # ==========================================
+    # TESTEO DE METODO DE RECHAZO (tabla TP)
+    # ==========================================
+    print("\n--- Testeo de Metodo de Rechazo (Uniforme, Exponencial, Normal) ---")
+
+    a_r, b_r = 10, 20
+    muestras_uni_r = []
+    intentos_uni = 0
+    for _ in range(n_muestras):
+        x_r, it_r = generar_uniforme_rechazo(a_r, b_r, devolver_intentos=True)
+        muestras_uni_r.append(x_r)
+        intentos_uni += it_r
+    tasa_uni = n_muestras / intentos_uni
+    _resumen_momentos("Uniforme (Rechazo)", muestras_uni_r, (a_r + b_r) / 2, ((b_r - a_r) ** 2) / 12)
+    print(f"Uniforme (Rechazo): tasa de aceptacion={tasa_uni:.4f}")
+
+    lambd_exp_r = 0.5
+    muestras_exp_r = []
+    intentos_exp = 0
+    for _ in range(n_muestras):
+        x_r, it_r = generar_exponencial_rechazo(lambd_exp_r, devolver_intentos=True)
+        muestras_exp_r.append(x_r)
+        intentos_exp += it_r
+    tasa_exp = n_muestras / intentos_exp
+    _resumen_momentos("Exponencial (Rechazo)", muestras_exp_r, 1 / lambd_exp_r, 1 / (lambd_exp_r ** 2))
+    print(f"Exponencial (Rechazo): tasa de aceptacion={tasa_exp:.4f}")
+
+    mu_nor_r, sigma_nor_r = 0, 1
+    muestras_nor_r = []
+    intentos_nor = 0
+    for _ in range(n_muestras):
+        x_r, it_r = generar_normal_rechazo(mu_nor_r, sigma_nor_r, devolver_intentos=True)
+        muestras_nor_r.append(x_r)
+        intentos_nor += it_r
+    tasa_nor = n_muestras / intentos_nor
+    _resumen_momentos("Normal (Rechazo)", muestras_nor_r, mu_nor_r, sigma_nor_r ** 2)
+    print(f"Normal (Rechazo): tasa de aceptacion={tasa_nor:.4f}\n")
 
     # --- 1. UNIFORME (Continua con Curva) ---
     a, b = 10, 20
