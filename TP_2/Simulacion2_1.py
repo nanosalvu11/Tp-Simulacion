@@ -12,18 +12,13 @@ def gcl(semilla, a, c, m, n):
     return [((x := (a * x + c) % m) / m) for _ in range(n)]
 
 # Método de los Cuadrados Medios
-def cuadrados_medios(semilla, n, k=None):
-    x = int(semilla)
+def cuadrados_medios(semilla, n):
+    x = semilla
     res = []
-    if k is None:
-        k = len(str(abs(x)))
-    width = 2 * k
     for _ in range(n):
-        sq = str(x * x).zfill(width)
-        start = (len(sq) - k) // 2
-        mid = sq[start:start + k]
-        x = int(mid)
-        res.append(x / (10**k - 1))
+        s = str(x**2).zfill(8)
+        x = int(s[2:6])  # Toma los 4 dígitos centrales
+        res.append(x / 9999) # Normaliza entre 0 y 1
     return res
 
 # Generador ERNIE (aleatorio desde la fuente del sistema)
@@ -68,7 +63,7 @@ def test_varianza(datos):
 
 # --- 3. EJECUCIÓN Y COMPARACIÓN ---
 
-n = 10000 # Cantidad de números a generar
+n = 50000 # Cantidad de números a generar
 
 # Generar secuencias
 nums_gcl = gcl(12345, 1103515245, 12345, 2**31, n)
