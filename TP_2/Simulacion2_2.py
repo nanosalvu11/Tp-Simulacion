@@ -263,6 +263,43 @@ def _plot_discreta_con_pmf(muestras, soporte, pmf, color, titulo, xticks=None):
     plt.legend()
     plt.show()
 
+
+def _plot_continua_rechazo(muestras, intentos_por_muestra, pdf, rango_x, titulo, color_hist, etiqueta_teorica="Teórica (PDF)"):
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+    axes[0].hist(
+        muestras,
+        bins=50,
+        color=color_hist,
+        edgecolor="black",
+        density=True,
+        alpha=0.7,
+        label="Muestra aceptada",
+    )
+    x_vals = np.linspace(rango_x[0], rango_x[1], 300)
+    y_vals = pdf(x_vals)
+    axes[0].plot(x_vals, y_vals, "r-", lw=2, label=etiqueta_teorica)
+    axes[0].set_title(f"{titulo}\nMuestra aceptada")
+    axes[0].legend()
+
+    max_intentos = max(intentos_por_muestra)
+    bins_intentos = np.arange(1, max_intentos + 2) - 0.5
+    axes[1].hist(
+        intentos_por_muestra,
+        bins=bins_intentos,
+        color="slategray",
+        edgecolor="black",
+        density=True,
+        alpha=0.75,
+    )
+    axes[1].set_title(f"{titulo}\nIntentos por muestra")
+    axes[1].set_xlabel("Intentos")
+    axes[1].set_ylabel("Frecuencia relativa")
+    axes[1].set_xticks(range(1, max_intentos + 1))
+
+    fig.tight_layout()
+    plt.show()
+
 # ==========================================
 # ZONA DE TESTEO Y GRÁFICOS (AL PIE DE LA LETRA)
 # ==========================================
@@ -277,36 +314,66 @@ if __name__ == "__main__":
 
     a_r, b_r = 10, 20
     muestras_uni_r = []
+    intentos_uni_lista = []
     intentos_uni = 0
     for _ in range(n_muestras):
         x_r, it_r = generar_uniforme_rechazo(a_r, b_r, devolver_intentos=True)
         muestras_uni_r.append(x_r)
+        intentos_uni_lista.append(it_r)
         intentos_uni += it_r
     tasa_uni = n_muestras / intentos_uni
     _resumen_momentos("Uniforme (Rechazo)", muestras_uni_r, (a_r + b_r) / 2, ((b_r - a_r) ** 2) / 12)
     print(f"Uniforme (Rechazo): tasa de aceptacion={tasa_uni:.4f}")
+    _plot_continua_rechazo(
+        muestras_uni_r,
+        intentos_uni_lista,
+        lambda x: np.where((x >= a_r) & (x <= b_r), 1 / (b_r - a_r), 0),
+        (a_r - 1, b_r + 1),
+        f"Distribución Uniforme por M. Rechazo a={a_r}, b={b_r}",
+        "steelblue",
+    )
 
     lambd_exp_r = 0.5
     muestras_exp_r = []
+    intentos_exp_lista = []
     intentos_exp = 0
     for _ in range(n_muestras):
         x_r, it_r = generar_exponencial_rechazo(lambd_exp_r, devolver_intentos=True)
         muestras_exp_r.append(x_r)
+        intentos_exp_lista.append(it_r)
         intentos_exp += it_r
     tasa_exp = n_muestras / intentos_exp
     _resumen_momentos("Exponencial (Rechazo)", muestras_exp_r, 1 / lambd_exp_r, 1 / (lambd_exp_r ** 2))
     print(f"Exponencial (Rechazo): tasa de aceptacion={tasa_exp:.4f}")
+    _plot_continua_rechazo(
+        muestras_exp_r,
+        intentos_exp_lista,
+        lambda x: lambd_exp_r * np.exp(-lambd_exp_r * x),
+        (0, max(muestras_exp_r)),
+        f"Distribución Exponencial por M. Rechazo lambda={lambd_exp_r}",
+        "lightgreen",
+    )
 
     mu_nor_r, sigma_nor_r = 0, 1
     muestras_nor_r = []
+    intentos_nor_lista = []
     intentos_nor = 0
     for _ in range(n_muestras):
         x_r, it_r = generar_normal_rechazo(mu_nor_r, sigma_nor_r, devolver_intentos=True)
         muestras_nor_r.append(x_r)
+        intentos_nor_lista.append(it_r)
         intentos_nor += it_r
     tasa_nor = n_muestras / intentos_nor
     _resumen_momentos("Normal (Rechazo)", muestras_nor_r, mu_nor_r, sigma_nor_r ** 2)
     print(f"Normal (Rechazo): tasa de aceptacion={tasa_nor:.4f}\n")
+    _plot_continua_rechazo(
+        muestras_nor_r,
+        intentos_nor_lista,
+        lambda x: (1 / (sigma_nor_r * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x - mu_nor_r) / sigma_nor_r) ** 2),
+        (min(muestras_nor_r), max(muestras_nor_r)),
+        f"Distribución Normal por M. Rechazo mu={mu_nor_r}, sigma={sigma_nor_r}",
+        "salmon",
+    )
 
     # --- 1. UNIFORME (Continua con Curva) ---
     a, b = 10, 20
