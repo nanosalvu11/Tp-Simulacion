@@ -1,11 +1,19 @@
 import argparse
 import heapq
+from pathlib import Path
 import random
 from collections import deque
 
-MU = 10.0
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+MU = 20.0
 RATIOS_MM1 = [25, 50, 75, 100, 125]
 COLAS_TP = [0, 2, 5, 10, 50]
+CORRIDAS_FIJAS = 20
+CARPETA_GRAFICAS = Path("graficas")
 INVENTARIO = {
     "demanda": 5.0,
     "revision": 1.0,
@@ -168,41 +176,111 @@ def imprimir_distribucion(dist):
     return "sin datos" if not dist else ", ".join(f"Q={n}: {p:.4f}" for n, p in sorted(dist.items()))
 
 
+def asegurar_carpeta_graficas():
+    CARPETA_GRAFICAS.mkdir(exist_ok=True)
+
+
+def etiqueta_cola(cola_maxima):
+    return "infinita" if cola_maxima is None else f"finita_{cola_maxima}"
+
+
+def graficar_metricas(corridas, resultados, titulo, archivo, metricas):
+    asegurar_carpeta_graficas()
+    filas = (len(metricas) + 2) // 3
+    fig, ejes = plt.subplots(filas, 3, figsize=(16, 4.5 * filas), constrained_layout=True)
+    ejes = ejes.ravel().tolist()
+
+    for indice, (clave, etiqueta) in enumerate(metricas):
+        ax = ejes[indice]
+        valores = [resultado[clave] for resultado in resultados]
+        promedio = mean(valores)
+        ax.plot(corridas, valores, marker="o", linewidth=1.5, label="Corrida")
+        ax.axhline(promedio, color="tab:red", linestyle="--", label=f"Promedio {promedio:.4f}")
+        ax.set_title(etiqueta)
+        ax.set_xlabel("Corrida")
+        ax.set_ylabel(etiqueta)
+        ax.grid(True, alpha=0.3)
+        ax.legend(fontsize=8)
+
+    for ax in ejes[len(metricas):]:
+        ax.axis("off")
+
+    fig.suptitle(titulo)
+    ruta = CARPETA_GRAFICAS / archivo
+    fig.savefig(ruta, dpi=150)
+    plt.close(fig)
+    print(f"  Grafica guardada en: {ruta}")
+
+
 def ejecutar_mm1(porcentajes, corridas, tiempo, colas):
     print(f"\n=== MM1 | mu fijo = {MU:.2f} ===")
     for porcentaje in porcentajes:
         lam = MU * (porcentaje / 100.0)
         print(f"\n--- Tasa de arribo = {porcentaje:.0f}% de mu -> lambda = {lam:.4f} ---")
         for cola_maxima in colas:
-            resumen = resumir_mm1(simular_mm1(lam, MU, tiempo, cola_maxima, 10_000 + i) for i in range(corridas))
-            cola_txt = "infinita" if cola_maxima is None else str(cola_maxima)
+            resultados = [simular_mm1(lam, MU, tiempo, cola_maxima, 10_000 + i) for i in range(corridas)]
+            resumen = resumir_mm1(resultados)
+            cola_txt = etiqueta_cola(cola_maxima)
+            for numero_corrida, resultado in enumerate(resultados, start=1):
+                p_den = "N/A" if resultado["p_den"] is None else f"{resultado['p_den']:.4f}"
+                print(
+                    f"Corrida {numero_corrida:02d} | L={resultado['L']:.4f} | Lq={resultado['Lq']:.4f} | "
+                    f"W={resultado['W']:.4f} | Wq={resultado['Wq']:.4f} | rho={resultado['rho']:.4f} | P(deneg)={p_den}"
+                )
             p_den = "N/A" if resumen["p_den"] is None else f"{resumen['p_den']:.4f}"
             print(f"Cola {cola_txt:>8} | L={resumen['L']:.4f} | Lq={resumen['Lq']:.4f} | W={resumen['W']:.4f} | Wq={resumen['Wq']:.4f} | rho={resumen['rho']:.4f} | P(deneg)={p_den}")
             print(f"  P(Q=n): {imprimir_distribucion(resumen['pq'])}")
+            graficar_metricas(
+                list(range(1, corridas + 1)),
+                resultados,
+                f"MM1 - lambda {porcentaje:.0f}% de mu - cola {cola_txt}",
+                f"mm1_{porcentaje:.0f}pct_{cola_txt}.png",
+                [("L", "L"), ("Lq", "Lq"), ("W", "W"), ("Wq", "Wq"), ("rho", "rho")],
+            )
 
 
 def ejecutar_inventario(corridas, tiempo):
     print("\n=== Inventario ===")
-    resumen = resumir_inventario(simular_inventario(tiempo, 50_000 + i) for i in range(corridas))
+    resultados = [simular_inventario(tiempo, 50_000 + i) for i in range(corridas)]
+    resumen = resumir_inventario(resultados)
+    for numero_corrida, resultado in enumerate(resultados, start=1):
+        print(
+            f"Corrida {numero_corrida:02d} | Orden={resultado['orden']:.4f} | "
+            f"Mantenimiento={resultado['mantenimiento']:.4f} | Faltante={resultado['faltante']:.4f} | "
+            f"Total={resultado['total']:.4f} | Ordenes={resultado['ordenes']}"
+        )
     print(f"Corridas: {corridas}")
     print(f"Costo de orden: {resumen['orden']:.4f}")
     print(f"Costo de mantenimiento: {resumen['mantenimiento']:.4f}")
     print(f"Costo de faltante: {resumen['faltante']:.4f}")
     print(f"Costo total: {resumen['total']:.4f}")
     print(f"Ordenes promedio por corrida: {resumen['ordenes']}")
+    graficar_metricas(
+        list(range(1, corridas + 1)),
+        resultados,
+        "Inventario - costos y ordenes por corrida",
+        "inventario_corridas.png",
+        [
+            ("orden", "Costo de orden"),
+            ("mantenimiento", "Costo de mantenimiento"),
+            ("faltante", "Costo de faltante"),
+            ("total", "Costo total"),
+            ("ordenes", "Ordenes"),
+        ],
+    )
 
 
 def main():
     parser = argparse.ArgumentParser(description="Estudio de simulacion MM1 e Inventario")
     parser.add_argument("-p", "--porcentaje", type=float, default=None)
-    parser.add_argument("--corridas", type=int, default=10)
+    parser.add_argument("--corridas", type=int, default=CORRIDAS_FIJAS)
     parser.add_argument("--tiempo", type=float, default=2000.0)
     parser.add_argument("--cola", choices=["infinita", "finita", "ambas"], default="ambas")
     parser.add_argument("--tamano-cola", type=int, default=5)
     parser.add_argument("--modelo", choices=["ambos", "mm1", "inventario"], default="ambos")
     args = parser.parse_args()
 
-    corridas = max(10, args.corridas)
+    corridas = CORRIDAS_FIJAS
     porcentajes = [args.porcentaje] if args.porcentaje is not None else RATIOS_MM1
     if args.cola == "infinita":
         colas = [None]
