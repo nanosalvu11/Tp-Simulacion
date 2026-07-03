@@ -184,6 +184,10 @@ def etiqueta_cola(cola_maxima):
     return "infinita" if cola_maxima is None else f"finita_{cola_maxima}"
 
 
+def probabilidad_cola_n(resumen, n):
+    return resumen["pq"].get(n, 0.0)
+
+
 def graficar_metricas(corridas, resultados, titulo, archivo, metricas):
     asegurar_carpeta_graficas()
     filas = (len(metricas) + 2) // 3
@@ -228,7 +232,8 @@ def ejecutar_mm1(porcentajes, corridas, tiempo, colas):
                     f"W={resultado['W']:.4f} | Wq={resultado['Wq']:.4f} | rho={resultado['rho']:.4f} | P(deneg)={p_den}"
                 )
             p_den = "N/A" if resumen["p_den"] is None else f"{resumen['p_den']:.4f}"
-            print(f"Cola {cola_txt:>8} | L={resumen['L']:.4f} | Lq={resumen['Lq']:.4f} | W={resumen['W']:.4f} | Wq={resumen['Wq']:.4f} | rho={resumen['rho']:.4f} | P(deneg)={p_den}")
+            p_q_2 = probabilidad_cola_n(resumen, 2)
+            print(f"Cola {cola_txt:>8} | L={resumen['L']:.4f} | Lq={resumen['Lq']:.4f} | W={resumen['W']:.4f} | Wq={resumen['Wq']:.4f} | rho={resumen['rho']:.4f} | P(Q=2)={p_q_2:.4f} | P(deneg)={p_den}")
             print(f"  P(Q=n): {imprimir_distribucion(resumen['pq'])}")
             graficar_metricas(
                 list(range(1, corridas + 1)),
